@@ -1,6 +1,7 @@
-﻿#include <conio.h>
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <conio.h>
 #include <windows.h>
-#include <stdlib.h>
 #include <thread>
 #include <iostream>
 using namespace std;
@@ -14,12 +15,12 @@ using namespace std;
 //Biến toàn cục
 POINT** X; //Mảng chứa MAX_CAR xe
 POINT Y; // Đại diện người qua đường
-int* FinishLine;	//mảng chứa vị trí ở đích mà xe có thể ở đó hoặc không
 int cnt = 0;//Biến hỗ trợ trong quá trình tăng tốc độ xe di chuyển
 int MOVING;//Biến xác định hướng di chuyển của người
 int SPEED;// Tốc độ xe chạy (xem như level)
-int HEIGH_CONSOLE = 20, WIDTH_CONSOLE = 80;// Độ dài và độ rộng của màn hình console
+int HEIGH_CONSOLE = 20, WIDTH_CONSOLE = 70;// Độ dài và độ rộng của màn hình console
 bool STATE; // Trạng thái sống/chết của người qua đường
+int* FinishLine;	//mảng chứa vị trí ở đích mà người có thể ở đó hoặc không
 
 void FixConsoleWindow() {
 	HWND consoleWindow = GetConsoleWindow();
@@ -35,6 +36,19 @@ void GotoXY(int x, int y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 }
 
+void TaoMangFinish(int* &FinishLine)
+{
+	//Tạo mảng chứa vị trí ở đích mà xe có thể ở đó hoặc không
+	if (FinishLine == NULL)
+	{
+		FinishLine = new int[MAX_MAN];
+		for (int i = 0; i < MAX_MAN; i++)	//khi nhân vật chưa đến đích thì vị trí ở đích có giá trị bằng 0, nhân vật đến đích thì giá trị sẽ bằng 1
+		{
+			FinishLine[i] = 0;
+		}
+	}
+}
+
 //Hàm khởi tạo dữ liệu mặc định ban đầu
 void ResetData() {
 	MOVING = 'D'; // Ban đầu cho người di chuyển sang phải
@@ -47,46 +61,51 @@ void ResetData() {
 			X[i] = new POINT[MAX_CAR_LENGTH];
 		for (int i = 0; i < MAX_CAR; i++)
 		{
-			int temp = (rand() % (WIDTH_CONSOLE - MAX_CAR_LENGTH)) + 1;
+			int temp1 = (rand() % (WIDTH_CONSOLE - MAX_CAR_LENGTH)) + 1;
 			for (int j = 0; j < MAX_CAR_LENGTH; j++)
 			{
-				X[i][j].x = temp + j;
+				X[i][j].x = temp1 + j;
 				X[i][j].y = 2 + i;
 			}
 		}
 	}
 	//Tạo mảng chứa vị trí ở đích mà xe có thể ở đó hoặc không
-	if (FinishLine == NULL)
-	{
-		FinishLine = new int[MAX_MAN];
-		for (int i = 0; i < MAX_MAN; i++)	//khi nhân vật chưa đến đích thì vị trí ở đích có giá trị bằng 0, nhân vật đến đích thì giá trị sẽ bằng 1
-		{
-			FinishLine[i] = 0;
-		}
-	}
+	TaoMangFinish(FinishLine);
 }
 
 void DrawBoard(int x, int y, int width, int height, int curPosX = 0, int curPosY = 0)
 {
-	GotoXY(x, y);
-	cout << 'X';
-	for (int i = 1; i < width; i++) cout << 'X';
-	cout << 'X';
-	GotoXY(x, height + y); cout << 'X';
-	for (int i = 1; i < width; i++) cout << 'X';
-	cout << 'X';
+	GotoXY(x + 1, y);
+	for (int i = 1; i < width; i++) cout << '_';
+	GotoXY(x, height + y); cout << '|';
+	for (int i = 1; i < width; i++) cout << '_';
+	cout << '|';
 	for (int i = y + 1; i < height + y; i++)
 	{
-		GotoXY(x, i); cout << 'X';
-		GotoXY(x + width, i); cout << 'X';
+		GotoXY(x, i); cout << '|';
+		GotoXY(x + width, i); cout << '|';
 	}
 	GotoXY(curPosX, curPosY);
+
+}
+
+void DrawMenu()
+{
+	GotoXY(0, HEIGH_CONSOLE + 1);
+	cout << "Huong dan tuy chon:";
+	GotoXY(0, HEIGH_CONSOLE + 2);
+	cout << "-Nhan nut P: dung tam thoi game";
+	GotoXY(0, HEIGH_CONSOLE + 3);
+	cout << "-Nhan nut L: nhap ten tap tin ma ban muon save game";
+	GotoXY(0, HEIGH_CONSOLE + 4);
+	cout << "-Nhan nut T: nhap ten tap tin ma ban muon load game";
 }
 
 void StartGame() {
 	system("cls");
 	ResetData(); // Khởi tạo dữ liệu gốc
 	DrawBoard(0, 0, WIDTH_CONSOLE, HEIGH_CONSOLE); // Vẽ màn hình game
+	DrawMenu();	//vẽ Menu lựa chọn
 	STATE = true;//Bắt đầu cho Thread chạy
 }
 
@@ -116,7 +135,7 @@ void PauseGame(HANDLE t) {
 //Hàm xử lý khi người đụng xe
 void ProcessDead() {
 	STATE = 0;
-	GotoXY(0, HEIGH_CONSOLE + 2);
+	GotoXY(WIDTH_CONSOLE + 2, 2);
 	printf("Dead, type Y to continue or anykey to exit");
 }
 
@@ -236,6 +255,7 @@ void MoveUp() {
 
 void SubThread()
 {
+
 	while (1) {
 		if (STATE) //Nếu người vẫn còn sống
 		{
@@ -257,7 +277,7 @@ void SubThread()
 			MOVING = ' ';// Tạm khóa không cho di chuyển, chờ nhận phím từ hàm main
 			EraseCars();
 			MoveCars();
-			DrawCars("*");
+			DrawCars("0");
 			if (IsImpact(Y, Y.y))
 			{
 				ProcessDead(); // Kiểm tra xe có đụng không
@@ -280,13 +300,130 @@ void SubThread()
 	}
 }
 
+void TextColor(int color)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+}
+
+void SaveGame()
+{
+	char NameSave[30];	//biến chứa tên mà người chơi muốn save game
+	GotoXY(WIDTH_CONSOLE + 2, 4);
+	cout << "Moi ban nhap ten tap tin can luu lai";
+	GotoXY(WIDTH_CONSOLE + 1, 5);
+	cout << "(VD: abc.txt) :";
+	GotoXY(WIDTH_CONSOLE + 17, 5);
+	cout << "                                            ";
+	GotoXY(WIDTH_CONSOLE + 2, 6);
+	cout << "                                            ";
+	GotoXY(WIDTH_CONSOLE + 17, 5);
+	gets_s(NameSave);
+	FILE* fsave = fopen(NameSave, "wt");
+	if (fsave != NULL)
+	{
+		for (int i = 0; i < MAX_MAN; i++)
+		{
+			fprintf(fsave, "%d ", FinishLine[i]);
+		}
+		GotoXY(WIDTH_CONSOLE + 2, 6);
+		cout << ".....Tro choi da duoc luu thanh cong";
+		fclose(fsave);
+	}
+	else
+	{
+		GotoXY(WIDTH_CONSOLE + 2, 6);
+		cout << ".....Luu tro choi that bai";
+	}
+}
+
+void LoadGame(char* NameLoad, char t)
+{
+	FILE* fload = fopen(NameLoad, "rt");
+	if (fload != NULL)
+	{
+		for (int i = 0; i < MAX_MAN; i++)
+		{
+			fscanf_s(fload, "%d", &FinishLine[i]);
+		}
+		if (t == 2)
+		{
+			GotoXY(WIDTH_CONSOLE + 2, 11);
+			cout << ".....Tai tro choi da luu thanh cong";
+		}
+		else
+		{
+			GotoXY(2, 8);
+			cout << "  .....Tai tro choi da luu thanh cong. Nhan phim bat ki de vao game.";
+		}
+		GotoXY(0, HEIGH_CONSOLE + 5);
+		for (int i = 0; i < MAX_MAN; i++)
+		{
+			printf("%d ", FinishLine[i]);
+		}
+		fclose(fload);
+	}
+	else
+	{
+		if (t == 2)
+		{
+			GotoXY(WIDTH_CONSOLE + 2, 11);
+			cout << ".....Tai tro choi that bai";
+		}
+		else
+		{
+			GotoXY(2, 8);
+			cout << "  .....Tai tro choi that bai. Nhan phim bat ki de choi moi.";
+		}
+	}
+}
+
+void GioiThieu()
+{
+	GotoXY(0, 4);
+	cout << "Huong dan thao tac :";
+	GotoXY(2, 5);
+	cout << "- Bam phim bat ki de bat dau choi moi";
+	GotoXY(2, 6);
+	cout << "- Bam phim T de tai lai game. De tai lai game vui long nhap ten tap tin can tai (VD: abc.txt)";
+	while (1)
+	{
+		GotoXY(40, 1);
+		TextColor(8 + rand() % 8);
+		cout << "CHAO MUNG CAC BAN DEN VOI TRO CHOI BANG QUA DUONG" << endl;
+		Sleep(100);
+	}
+}
+
 void main()
 {
-
-
-	int temp;
-	FixConsoleWindow();
+	int temp;	//lưu trữ phím bấm của người chơi
+	char NameLoad[30];	//biến chứa tên mà người chơi muốn Load game
 	srand(time_t(NULL));
+	char t = 1;	//nhận biêt tiểu trình: 1 là tiểu trình giơi thiệu, 2 là tiểu trình chạy game
+
+				//xử lí màn hình chính trước khi vào game
+	thread t2(GioiThieu);
+	TaoMangFinish(FinishLine);
+	temp = toupper(_getch());
+	if (temp == 'T')
+	{
+		PauseGame(t2.native_handle());
+		TextColor(15);
+		GotoXY(2, 7);
+		cout << "  Moi ban nhap ten tap tin can load :";
+		GotoXY(40, 7);
+		gets_s(NameLoad);
+		LoadGame(NameLoad, t);
+		_getch();
+		ResumeThread((HANDLE)t2.native_handle());
+	}
+	TerminateThread(t2.native_handle(), 0);
+	t2.join();
+	TextColor(15);
+
+	//bắt đầu chơi game
+	t = 2;
+	FixConsoleWindow();
 	StartGame();
 	thread t1(SubThread);
 	while (1)
@@ -301,6 +438,28 @@ void main()
 			}
 			else if (temp == 'P') {
 				PauseGame(t1.native_handle());
+			}
+			else if (temp == 'L')
+			{
+				PauseGame(t1.native_handle());
+				SaveGame();
+				ResumeThread((HANDLE)t1.native_handle());
+			}
+			else if (temp == 'T')
+			{
+				PauseGame(t1.native_handle());
+				GotoXY(WIDTH_CONSOLE + 2, 9);
+				cout << "Moi ban nhap ten tap tin da duoc luu ";
+				GotoXY(WIDTH_CONSOLE + 2, 10);
+				cout << "(VD: abc.txt) :";
+				GotoXY(WIDTH_CONSOLE + 17, 10);
+				cout << "                            ";
+				GotoXY(WIDTH_CONSOLE + 2, 11);
+				cout << "                                    ";
+				GotoXY(WIDTH_CONSOLE + 17, 10);
+				gets_s(NameLoad);
+				LoadGame(NameLoad, t);
+				ResumeThread((HANDLE)t1.native_handle());
 			}
 			else {
 				ResumeThread((HANDLE)t1.native_handle());
